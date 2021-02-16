@@ -144,6 +144,19 @@ if (NOT(WIN32))
     target_link_libraries(tau_m m)
 endif()
 
+file(GLOB_RECURSE tau_h_SOURCE_FILES analysis/timescales/tau_h_sim.c)
+add_executable(tau_h ${tau_h_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(tau_h ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(tau_h m)
+endif()
+
+file(GLOB_RECURSE tau_v_SOURCE_FILES analysis/timescales/tau_v_sim.c)
+add_executable(tau_v ${tau_v_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(tau_v ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(tau_v m)
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O3 -funroll-loops ") # Optimization stuff, TODO: Investigate.
 #SET(CMAKE_VERBOSE_MAKEFILE ON)

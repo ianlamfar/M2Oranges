@@ -1,5 +1,5 @@
 //
-// Created by Ian on 1/2/2021.
+// Created by Ian on 16/2/2021.
 //
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -56,12 +56,11 @@ cl_bool periodic = CL_TRUE;
 cl_int coupled = 2;
 cl_int analytic = 2;
 cl_int fixed_Re = 0;
-cl_int fixed_tau = 1; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
+cl_int fixed_tau = 2; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
 cl_int model = 2;
 cl_float tau_scale;
 double T_R;
 float tau;
-
 float init_speed_mean = 1;
 float init_speed_std_dev = 0.1;
 
@@ -167,10 +166,10 @@ int main() {
         sprintf(sc, "%s_%s", array[0], array[1]); // combine ones and decimals into ones_decimals
 
         // create dir string
-        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_tau_m_", sc, "/");
+        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_tau_h_", sc, "/");
 //        printf("%s\n", folder);
-        sprintf(dir, "%s%s", PROJECT_DIR "analysis/timescales/tau_m/data/", folder);
-        sprintf(datadir, "%s", PROJECT_DIR "analysis/timescales/tau_m/data/");
+        sprintf(dir, "%s%s", PROJECT_DIR "analysis/timescales/tau_h/data/", folder);
+        sprintf(datadir, "%s", PROJECT_DIR "analysis/timescales/tau_h/data/");
 
         // calculate simulation duration
         start = time(NULL);

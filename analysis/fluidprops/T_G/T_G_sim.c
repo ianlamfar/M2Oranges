@@ -1,6 +1,7 @@
 //
-// Created by Ian on 1/2/2021.
+// Created by Ian on 16/2/2021.
 //
+
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
@@ -187,4 +188,3 @@ int main() {
     }
 
 }
-
