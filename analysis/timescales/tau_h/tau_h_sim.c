@@ -19,7 +19,7 @@
 #include <string.h>
 
 #define MAX_SOURCE_SIZE (0x100000)
-#define VERBOSE TRUE
+#define VERBOSE FALSE
 #define LOG_DATA TRUE
 
 char prefix[50];
@@ -28,7 +28,7 @@ char dir[200];
 char datadir[200];
 
 particle *hparticles;
-cl_ulong NUMPART = 256*64;
+cl_ulong NUMPART = 1e5;
 
 // Gas properties
 cl_double C_p_G = 1141;
@@ -82,10 +82,10 @@ int end;
 
 int main() {
     // Initialize OpenCL.
-    setContext(&device, &context, TRUE);
+    setContext((cl_device_id *) &device, &context, TRUE);
 
     // Run tests
-    if (!run_all_tests(device, context, FALSE)) {
+    if (!run_all_tests((cl_device_id) device, context, FALSE)) {
         return 1;
     }
 
@@ -95,7 +95,7 @@ int main() {
                                       PROJECT_DIR "/kernels/get_vel_fluid/tgv.cl",
                                       PROJECT_DIR "/kernels/iterate_particle.cl"};
     // ONLY WORKS FOR M2
-    cl_kernel iterate_particle = getKernel(device, context, iterate_particle_files, 4, "iterate_particle", TRUE);
+    cl_kernel iterate_particle = getKernel((cl_device_id) device, context, iterate_particle_files, 4, "iterate_particle", TRUE);
 
 
 
@@ -106,6 +106,7 @@ int main() {
     }
 
     mu_G = 6.109e-6 + 4.604e-8 * T_R - 1.051e-11 * pow(T_R, 2);
+    //    mu_G = 6.109e-6 + 4.604e-8 * T_G - 1.051e-11 * pow(T_G, 2);
 
     float min_scale = 0.5;
     float max_scale = 5.0;
@@ -135,7 +136,7 @@ int main() {
         cl_float3 *velocities = malloc(sizeof(cl_float3) * NUMPART);
         createNormalDistVelocities(velocities, NUMPART, init_speed_mean, init_speed_std_dev);
 
-        particle_diameter = pow(1.1,0.5)/1000;
+        particle_diameter = 0.002;
 
         // Initialize particles.
         initializeMonodisperseParticles(hparticles, NUMPART, density, mu_G, particle_diameter,
@@ -148,9 +149,9 @@ int main() {
             return 1;
         }
         tau = get_tau(&(hparticles[0]));
-        timestep = 0.01 * tau;
-        log_step = timestep;
-        sim_length = 10 * tau;
+        timestep = 0.0001 * tau;
+        log_step = 100*timestep;
+        sim_length = 100 * tau;
 
         // Convert decimal scale values xx.xx to filename format xx_xx
         char s0[20];
@@ -174,7 +175,7 @@ int main() {
         // calculate simulation duration
         start = time(NULL);
         runSim(hparticles, NUMPART, iterate_particle, hparticles[0].diameter, periodic, domain_length,
-               prefix, dir, sim_length, timestep, VERBOSE, LOG_DATA, TRUE, log_step, device, context, coupled,
+               prefix, dir, sim_length, timestep, VERBOSE, LOG_DATA, TRUE, log_step, (cl_device_id) device, context, coupled,
                analytic, fixed_Re, model, fixed_tau, tau_scale);
         end = time(NULL);
 

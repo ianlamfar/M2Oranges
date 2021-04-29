@@ -8,7 +8,7 @@ MESSAGE(CMake\ Version: \ ${CMAKE_VERSION})
 # Fix Windows path environment variable.
 if (WIN32)
     if(DEFINED ENV{OCL_ROOT})
-        STRING(REGEX REPLACE "\\\\" "/" OCL_ROOT $ENV{OCL_ROOT})
+        STRING(REGEX REPLACE "\\\\" "/" OCL_ROOT $ENV{AMDAPPSDKROOT}) # replace with OCL_ROOT if necessary
     endif()
     if(DEFINED ENV{CUDA_PATH})
         STRING(REGEX REPLACE "\\\\" "/" CUDA_PATH $ENV{CUDA_PATH})
@@ -67,7 +67,8 @@ file(GLOB_RECURSE sim_SOURCE_FILES
         "util/particleUtils/particleUtils.c" "util/particleUtils/particleUtils.h"
         "structures/*.h" "util/kernelUtils.cl"
         "tests/*/*"
-        "sims/simRunner/*")
+        "sims/simRunner/*"
+        "sims/simRunner_tgv/*")
 
 # Targets
 
@@ -156,6 +157,41 @@ add_executable(tau_v ${tau_v_SOURCE_FILES} ${sim_SOURCE_FILES})
 target_link_libraries(tau_v ${OpenCL_LIBRARY})
 if (NOT(WIN32))
     target_link_libraries(tau_v m)
+endif()
+
+file(GLOB_RECURSE T_G_SOURCE_FILES analysis/fluidprops/T_G_sim.c)
+add_executable(T_G ${T_G_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(T_G ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(T_G m)
+endif()
+
+file(GLOB_RECURSE rho_G_SOURCE_FILES analysis/fluidprops/rho_G_sim.c)
+add_executable(rho_G ${rho_G_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(rho_G ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(rho_G m)
+endif()
+
+file(GLOB_RECURSE mu_G_SOURCE_FILES analysis/fluidprops/mu_G_sim.c)
+add_executable(mu_G ${mu_G_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(mu_G ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(mu_G m)
+endif()
+
+file(GLOB_RECURSE tgv_mag_SOURCE_FILES analysis/tgvmag/tgv_sim.c)
+add_executable(tgv_mag ${tgv_mag_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(tgv_mag ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(tgv_mag m)
+endif()
+
+file(GLOB_RECURSE m1m2_perf_SOURCE_FILES analysis/m1m2_perf/m1m2_sim.c)
+add_executable(m1m2_perf ${m1m2_perf_SOURCE_FILES} ${sim_SOURCE_FILES})
+target_link_libraries(m1m2_perf ${OpenCL_LIBRARY})
+if (NOT(WIN32))
+    target_link_libraries(m1m2_perf m)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O3 -funroll-loops ") # Optimization stuff, TODO: Investigate.

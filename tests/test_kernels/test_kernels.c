@@ -10,7 +10,8 @@ boolean test_kernels(cl_device_id device, cl_context context, boolean verbose) {
 
     // Source file variables
     char *fileNames[] = {
-            PROJECT_DIR "/kernels/iterate_particle.cl"
+            PROJECT_DIR "/kernels/iterate_particle.cl",
+//            PROJECT_DIR "/kernels/iterate_particle_tgv.cl"
     };
 
     char *kernelNames[] = {

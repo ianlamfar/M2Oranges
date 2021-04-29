@@ -1,6 +1,7 @@
 //
-// Created by Ian on 16/2/2021.
+// Created by Ian on 17/2/2021.
 //
+
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
@@ -10,11 +11,11 @@
 #endif
 
 #include <stdio.h>
-#include "../../../util/clUtils/clUtils.h"
-#include "../../../util/particleUtils/particleUtils.h"
-#include "../../../tests/run_tests/run_tests.h"
-#include "../../../util/simUtils/simUtils.h"
-#include "../../../sims/simRunner/simRunner.h"
+#include "../../util/clUtils/clUtils.h"
+#include "../../util/particleUtils/particleUtils.h"
+#include "../../tests/run_tests/run_tests.h"
+#include "../../util/simUtils/simUtils.h"
+#include "../../sims/simRunner_tgv/simRunner_tgv.h"
 #include <malloc.h>
 #include <string.h>
 
@@ -56,11 +57,12 @@ cl_bool periodic = CL_TRUE;
 cl_int coupled = 2;
 cl_int analytic = 2;
 cl_int fixed_Re = 0;
-cl_int fixed_tau = 3; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
+cl_int fixed_tau = 0; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
 cl_int model = 2;
-cl_float tau_scale;
+cl_float tau_scale = 1;
 double T_R;
 float tau;
+
 float init_speed_mean = 1;
 float init_speed_std_dev = 0.1;
 
@@ -92,10 +94,9 @@ int main() {
     // Build iterate_particle kernel.
     char *iterate_particle_files[] = {PROJECT_DIR "/util/kernelUtils.cl",
                                       PROJECT_DIR "/kernels/get_gravity/no_gravity.cl",
-                                      PROJECT_DIR "/kernels/get_vel_fluid/tgv.cl",
-                                      PROJECT_DIR "/kernels/iterate_particle.cl"};
+                                      PROJECT_DIR "/kernels/iterate_particle_tgv.cl"};
     // ONLY WORKS FOR M2
-    cl_kernel iterate_particle = getKernel((cl_device_id) device, context, iterate_particle_files, 4, "iterate_particle", TRUE);
+    cl_kernel iterate_particle = getKernel((cl_device_id) device, context, iterate_particle_files, 3, "iterate_particle", TRUE);
 
 
 
@@ -119,8 +120,8 @@ int main() {
     }
 
     for (int i = 0; i <= num; i += 1) {
-        tau_scale = min_scale + (i * step);
-        printf("Tau scale = %f\n", tau_scale);
+        float tgv_scale = min_scale + (i * step);
+        printf("TGV scale = %f\n", tgv_scale);
         printf("[INIT] Creating particle positions.\n");
         particle_effect_diameter = (cl_float) (1.5 * particle_diameter);
         cl_float3 *positions = malloc(sizeof(cl_float3) * NUMPART);
@@ -132,6 +133,7 @@ int main() {
             fprintf(stderr, "Not all particles fit within the specified domain length for the given cube parameters (%.3f > %.3f).", cube_length, domain_length);
             return 1;
         }
+
 
         cl_float3 *velocities = malloc(sizeof(cl_float3) * NUMPART);
         createNormalDistVelocities(velocities, NUMPART, init_speed_mean, init_speed_std_dev);
@@ -151,6 +153,7 @@ int main() {
         tau = get_tau(&(hparticles[0]));
         timestep = 0.0001 * tau;
         log_step = 100*timestep;
+//        log_step = timestep;
         sim_length = 100 * tau;
 
         // Convert decimal scale values xx.xx to filename format xx_xx
@@ -167,16 +170,16 @@ int main() {
         sprintf(sc, "%s_%s", array[0], array[1]); // combine ones and decimals into ones_decimals
 
         // create dir string
-        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_tau_v_", sc, "/");
+        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_tgv_", sc, "/");
 //        printf("%s\n", folder);
-        sprintf(dir, "%s%s", PROJECT_DIR "analysis/timescales/tau_v/data/", folder);
-        sprintf(datadir, "%s", PROJECT_DIR "analysis/timescales/tau_v/data/");
+        sprintf(dir, "%s%s", PROJECT_DIR "analysis/tgvmag/data/", folder);
+        sprintf(datadir, "%s", PROJECT_DIR "analysis/tgvmag/data/");
 
         // calculate simulation duration
         start = time(NULL);
-        runSim(hparticles, NUMPART, iterate_particle, hparticles[0].diameter, periodic, domain_length,
-               prefix, dir, sim_length, timestep, VERBOSE, LOG_DATA, TRUE, log_step, (cl_device_id) device, context, coupled,
-               analytic, fixed_Re, model, fixed_tau, tau_scale);
+        runSim_tgv(hparticles, NUMPART, iterate_particle, hparticles[0].diameter, periodic, domain_length,
+                   prefix, dir, sim_length, timestep, VERBOSE, LOG_DATA, TRUE, log_step, (cl_device_id) device, context, coupled,
+                   analytic, fixed_Re, model, fixed_tau, tau_scale, tgv_scale);
         end = time(NULL);
 
         int minutes = (end-start) / 60;
@@ -187,5 +190,3 @@ int main() {
     }
 
 }
-
-

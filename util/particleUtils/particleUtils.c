@@ -6,8 +6,7 @@
 
 void printParticle(particle *part) {
     particle p = *part;
-    printf("%i\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n", (int) p.id, p.diameter, p.density,
-           p.fluid_viscosity, p.pos.x, p.pos.y, p.pos.z, p.vel.x, p.vel.y, p.vel.z, p.forces.x, p.forces.y, p.forces.z);
+    printf("%f,%f,%f,%f", p.diameter, p.density, p.fluid_viscosity, p.diameter);
 }
 
 float get_particle_mass_from_values(float density, float diameter) {
@@ -53,6 +52,7 @@ void initializeMonodisperseParticles(particle *particles, cl_ulong NUMPART, floa
         particles[i].fluid_vel = (cl_float3) {0.0, 0.0, 0.0};
         particles[i].m_d = particles[i].density * M_PI * (particles[i].diameter * particles[i].diameter * particles[i].diameter) / 6;
         particles[i].initial_mass = particles[i].density * M_PI * (particles[i].diameter * particles[i].diameter * particles[i].diameter) / 6;
+        particles[i].initial_temp = T_d;
 
         //Create reference temperature//
         double T_R = (137 * pow((T_B/373.15), 0.68) * log10(T_G)) - 45;
@@ -87,6 +87,9 @@ void initializeMonodisperseParticles(particle *particles, cl_ulong NUMPART, floa
         //non-dimensional numbers
         particles[i].Pr_G = 0.815 - (4.958*pow(10,-4)*T_R) + (4.514*pow(10,-7)*T_R*T_R);
         particles[i].Sc_G = 0.815 - (4.958*pow(10,-4)*T_R) + (4.514*pow(10,-7)*T_R*T_R); // =Pr_G
+
+        //zero counter
+        particles[i].zero = 0;
     }
 }
 

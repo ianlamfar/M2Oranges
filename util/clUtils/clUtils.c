@@ -234,7 +234,7 @@ cl_kernel getKernel(cl_device_id device, cl_context context, char **fileNames, i
     size_t utils_size;
     cl_int ret;
 
-    if (verbose) printf("[INIT] Creating %s kernel\n", kernelName);
+    if (verbose) printf("\n[INIT] Creating %s kernel\n", kernelName);
 
     source_str = (char *) malloc(MAX_SOURCE_SIZE * numFiles);
     source_size = 0;
@@ -322,5 +322,6 @@ cl_int particlesToDevice(cl_command_queue queue, cl_mem gparticles, particle **h
 }
 
 cl_int particlesToHost(cl_command_queue queue, cl_mem gparticles, particle **hparticles, cl_ulong NUMPART) {
+//    printf("   Reading buffer...\n");
     return clEnqueueReadBuffer(queue, gparticles, CL_TRUE, 0, sizeof(particle) * NUMPART, *hparticles, 0, NULL, NULL);
 }

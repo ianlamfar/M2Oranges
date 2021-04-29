@@ -40,13 +40,15 @@ typedef struct particle {
     cl_double m_d;
     cl_double Reynolds_d;
     cl_double initial_mass;
+    cl_double initial_temp;
     cl_double C_p_G;
+    cl_int zero;
     // Structure memory alignment for Visual Studio and GCC compilers.
 #if defined(_MSC_VER)
     cl_char padding[244];
-} __declspec(align(512)) particle;
+} __declspec(align(256)) particle;
 #elif defined(__GNUC__) || defined(__GNUG__) || defined(__MINGW_GCC_VERSION)
-} __attribute__((aligned (512))) particle;
+} __attribute__((aligned (256))) particle;
 #endif
 
 #endif //DEMORANGES_PARTICLE_H

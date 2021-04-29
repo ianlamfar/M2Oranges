@@ -41,9 +41,8 @@
 int writeParticles(particle *particles, float time, char *prefix, char *dir, cl_ulong NUMPART, boolean log_vel);
 
 int writeSetupData(char prefix[], char dir[], cl_ulong NUMPART, cl_float timestep, cl_float sim_length,
-                   cl_float domain_length,
-                   cl_float particle_diameter, cl_float effect_diameter, cl_float particle_density,
-                   cl_float fluid_viscosity);
+                   cl_float domain_length, cl_float particle_diameter, cl_float particle_density,
+                   cl_float fluid_viscosity, float tau);
 
 int writeTime(char prefix[], char dir[], cl_ulong NUMPART, char label[]);
 

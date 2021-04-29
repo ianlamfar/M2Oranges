@@ -31,7 +31,9 @@ typedef struct {
     double m_d;
     double Reynolds_d;
     double initial_mass;
+    double initial_temp;
     double C_p_G;
+    int zero;
 } __attribute__ ((aligned (256))) particle;
 
 float get_particle_mass(particle p) {

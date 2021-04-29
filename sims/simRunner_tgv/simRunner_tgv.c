@@ -1,20 +1,20 @@
 //
-// Created by Elijah on 03/03/2018.
+// Created by Ian on 17/2/2021.
 //
 
-#include "simRunner.h"
+#include "simRunner_tgv.h"
 #include "../../util/particleUtils/particleUtils.h"
 #include <pthread.h>
-int next = 0;
+int nexttgv = 0;
 
-int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, cl_float particle_diameter, cl_bool periodic,
-       cl_float domain_length, char prefix[], char log_dir[], float sim_length, float timestep, bool VERBOSE,
-       bool LOG_DATA, bool log_vel, float log_step, cl_device_id device, cl_context context, int coupled, int analytic,
-       int fixed_Re, int model, int fixed_tau, cl_float tau_scale) {
+int runSim_tgv(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, cl_float particle_diameter, cl_bool periodic,
+           cl_float domain_length, char prefix[], char log_dir[], float sim_length, float timestep, bool VERBOSE,
+           bool LOG_DATA, bool log_vel, float log_step, cl_device_id device, cl_context context, int coupled, int analytic,
+           int fixed_Re, int model, int fixed_tau, cl_float tau_scale, cl_float tgv_scale) {
     cl_int ret;  // Variable in which to store OpenCL return values.
 
     cl_mem gparticles;  // GPU array of particles.
-    
+
     // Check that the logging directory exists if needed. Construct directory if it does not exist.
     if (!checkDirExists(log_dir)) {
         mkdir(log_dir);
@@ -22,14 +22,13 @@ int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, c
 //        return 1;
     }
 
-//    printf("%s\n", log_dir);
-
 
     // Create command queue.
     cl_command_queue queue = getCommandQueue(context, device, VERBOSE);
 
     // Create gparticles buffer and copy particles into it.
     gparticles = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(particle) * NUMPART, NULL, &ret);
+
     ret = particlesToDevice(queue, gparticles, &hparticles, NUMPART);
 
     int int_periodic;  // Enumerated version of periodic boolean as booleans can't be passed to GPU by default.
@@ -51,7 +50,7 @@ int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, c
     ret = clSetKernelArg(iterate_particle, 7, sizeof(cl_int), &model);
     ret = clSetKernelArg(iterate_particle, 8, sizeof(cl_int), &fixed_tau);
     ret = clSetKernelArg(iterate_particle, 9, sizeof(cl_float), &tau_scale);
-
+    ret = clSetKernelArg(iterate_particle, 10, sizeof(cl_float), &tgv_scale);
 
     // Do pre-simulation output and logging.
     printf("Running sim with %llu particles, timestep %f, and log step %f, length %f.\n", NUMPART, timestep,
@@ -81,7 +80,7 @@ int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, c
 
     for (cl_float time = timestep; time <= sim_length; time += timestep) {
         if (VERBOSE) {printf("Checking particle mass...\n");}
-        bool cont = parallelMassCheck(hparticles, NUMPART);
+        bool cont = parallelMassChecktgv(hparticles, NUMPART);
         if (cont) {
             if (VERBOSE) printf("   Time = %f\n", time);
 
@@ -96,7 +95,6 @@ int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, c
             if (LOG_DATA && time - last_write >= 0.99*log_step) {
                 if (VERBOSE) {printf("   Writing data...\n");}
                 ret = particlesToHost(queue, gparticles, &hparticles, NUMPART);
-//                printf("%i\n", ret);
 
                 if (!writeParticles(hparticles, time, prefix, log_dir, NUMPART, log_vel)) {
                     return 1;
@@ -104,7 +102,7 @@ int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, c
 
                 last_write = time;
             }
-        } else {
+        } else{
             printf("ALL DROPLETS REACHED ZERO MASS, ITERATION TERMINATED (Time = %f)\n", last_write);
             break;
         }
@@ -120,7 +118,7 @@ int runSim(particle *hparticles, cl_ulong NUMPART, cl_kernel iterate_particle, c
 //            return 1;
 //        }
 //    }
-
+//
 //    if (!writeTime(prefix, log_dir, NUMPART, "End")) {
 //        return 1;
 //    }
@@ -134,33 +132,26 @@ struct arg_struct {
     particle *hhparticles;
 };
 
-void *massCheck(void *arguments) {
+void *massChecktgv(void *arguments) {
     struct arg_struct *args = arguments;
     int start = args->start_ind;
     int end = args->end_ind;
     int id = args->thread_id;
     particle *hparticles = args->hhparticles;
-    for (int j = start; j < end; j += 1) {
+    for (int j = start; j <= end; j += 1) {
         double ratio = hparticles[j].m_d / hparticles[j].initial_mass;
-//        printf("id = %d, start = %d, end = %d, index = %d, mass = %e, ratio = %e\n", id, start, end, j, hparticles[j].m_d, ratio);
         if (ratio > 0.0001) {
-//        if (hparticles[j].zero == 0) {
-            next += 1;
-//            break;
+//            printf("id = %d, start = %d, end = %d, index = %d, mass = %e, ratio = %e\n", id, start, end, j, hparticles[j].m_d, ratio);
+            nexttgv += 1;
+            break;
         }
     }
 }
 
 // Split mass check into parallel groups to reduce GPU idle time
-bool parallelMassCheck(particle *hparticles, cl_ulong NUMPART) {
-    next = 0;
+bool parallelMassChecktgv(particle *hparticles, cl_ulong NUMPART) {
+    nexttgv = 0;
     int threadcount = 1;
-//    if (NUMPART <= 10000) {
-//        threadcount = 1;
-//    } else {
-//        threadcount = 10;
-//    }
-
     bool cont;
     pthread_t id[threadcount];
     struct arg_struct args;
@@ -170,7 +161,7 @@ bool parallelMassCheck(particle *hparticles, cl_ulong NUMPART) {
         args.start_ind = (NUMPART / threadcount) * i;
         args.end_ind = (NUMPART / threadcount) * (i + 1);
         args.thread_id = i;
-        pthread_create(&id[i], NULL, massCheck, (void *)&args);
+        pthread_create(&id[i], NULL, massChecktgv, (void *)&args);
 //        pthread_join(id[i], NULL); // serial code to crosscheck
     }
 
@@ -178,11 +169,10 @@ bool parallelMassCheck(particle *hparticles, cl_ulong NUMPART) {
 //        printf("Join %d\n", i);
         pthread_join(id[i], NULL);
     }
-//    printf("Non zero threads = %d\n", next);
+//    printf("Non zero threads = %d\n", nexttgv);
 //    pthread_exit(NULL);
-//    printf("%d\n", next);
 
-    if (next != 0) {
+    if (nexttgv != 0) {
         cont = TRUE;
     } else {
         cont = FALSE;

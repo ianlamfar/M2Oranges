@@ -1,6 +1,7 @@
 //
 // Created by Ian on 16/2/2021.
 //
+
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
@@ -28,7 +29,7 @@ char dir[200];
 char datadir[200];
 
 particle *hparticles;
-cl_ulong NUMPART = 1e5;
+cl_ulong NUMPART = 1e4;
 
 // Gas properties
 cl_double C_p_G = 1141;
@@ -56,11 +57,12 @@ cl_bool periodic = CL_TRUE;
 cl_int coupled = 2;
 cl_int analytic = 2;
 cl_int fixed_Re = 0;
-cl_int fixed_tau = 3; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
+cl_int fixed_tau = 0; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
 cl_int model = 2;
-cl_float tau_scale;
+cl_float tau_scale = 1;
 double T_R;
 float tau;
+
 float init_speed_mean = 1;
 float init_speed_std_dev = 0.1;
 
@@ -106,7 +108,7 @@ int main() {
     }
 
     mu_G = 6.109e-6 + 4.604e-8 * T_R - 1.051e-11 * pow(T_R, 2);
-    //    mu_G = 6.109e-6 + 4.604e-8 * T_G - 1.051e-11 * pow(T_G, 2);
+//    mu_G = 6.109e-6 + 4.604e-8 * T_G - 1.051e-11 * pow(T_G, 2);
 
     float min_scale = 0.5;
     float max_scale = 5.0;
@@ -119,8 +121,10 @@ int main() {
     }
 
     for (int i = 0; i <= num; i += 1) {
-        tau_scale = min_scale + (i * step);
-        printf("Tau scale = %f\n", tau_scale);
+        float mu_scale = min_scale + (i * step);
+        float mu_G_scaled = mu_scale * mu_G;
+        printf("Fluid viscosity scale = %f\n", mu_scale);
+        printf("Fluid viscosity = %e\n", mu_G_scaled);
         printf("[INIT] Creating particle positions.\n");
         particle_effect_diameter = (cl_float) (1.5 * particle_diameter);
         cl_float3 *positions = malloc(sizeof(cl_float3) * NUMPART);
@@ -133,13 +137,14 @@ int main() {
             return 1;
         }
 
+
         cl_float3 *velocities = malloc(sizeof(cl_float3) * NUMPART);
         createNormalDistVelocities(velocities, NUMPART, init_speed_mean, init_speed_std_dev);
 
         particle_diameter = 0.002;
 
         // Initialize particles.
-        initializeMonodisperseParticles(hparticles, NUMPART, density, mu_G, particle_diameter,
+        initializeMonodisperseParticles(hparticles, NUMPART, density, mu_G_scaled, particle_diameter,
                                         particle_effect_diameter, C_p_G, C_L, P_atm, rho_G, R_bar, R, W_G, W_V, Y_G,
                                         T_d, T_B, T_G, positions, velocities);
         free(positions);
@@ -167,10 +172,10 @@ int main() {
         sprintf(sc, "%s_%s", array[0], array[1]); // combine ones and decimals into ones_decimals
 
         // create dir string
-        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_tau_v_", sc, "/");
+        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_mu_G_", sc, "/");
 //        printf("%s\n", folder);
-        sprintf(dir, "%s%s", PROJECT_DIR "analysis/timescales/tau_v/data/", folder);
-        sprintf(datadir, "%s", PROJECT_DIR "analysis/timescales/tau_v/data/");
+        sprintf(dir, "%s%s", PROJECT_DIR "analysis/fluidprops/mu_G/data/", folder);
+        sprintf(datadir, "%s", PROJECT_DIR "analysis/fluidprops/mu_G/data/");
 
         // calculate simulation duration
         start = time(NULL);
@@ -187,5 +192,3 @@ int main() {
     }
 
 }
-
-

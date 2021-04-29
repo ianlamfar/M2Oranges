@@ -20,7 +20,7 @@
 #include <string.h>
 
 #define MAX_SOURCE_SIZE (0x100000)
-#define VERBOSE TRUE
+#define VERBOSE FALSE
 #define LOG_DATA TRUE
 
 char prefix[50];
@@ -29,14 +29,14 @@ char dir[200];
 char datadir[200];
 
 particle *hparticles;
-cl_ulong NUMPART = 256*64;
+cl_ulong NUMPART = 1e5;
 
 // Gas properties
 cl_double C_p_G = 1141;
 cl_double W_G = 28.97; // Molecular weight of carrier gas (air) (kg/(kg mole))
 cl_double Y_G = 0;
 cl_double T_G = 1000; // Gas temperature (K)
-cl_double rho_G = 0.3529;
+cl_double rho_G;
 
 // Particle properties.
 cl_double T_d = 315; //particle temperature (K)
@@ -57,9 +57,9 @@ cl_bool periodic = CL_TRUE;
 cl_int coupled = 2;
 cl_int analytic = 2;
 cl_int fixed_Re = 0;
-cl_int fixed_tau = 1; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
+cl_int fixed_tau = 0; // Timescale simulation, 0 = unity tau, 1 = tau_m, 2 = tau_h, 3 = tau_v
 cl_int model = 2;
-cl_float tau_scale;
+cl_float tau_scale = 1;
 double T_R;
 float tau;
 
@@ -84,10 +84,10 @@ int end;
 
 int main() {
     // Initialize OpenCL.
-    setContext(&device, &context, TRUE);
+    setContext((cl_device_id *) &device, &context, TRUE);
 
     // Run tests
-    if (!run_all_tests(device, context, FALSE)) {
+    if (!run_all_tests((cl_device_id) device, context, FALSE)) {
         return 1;
     }
 
@@ -97,17 +97,15 @@ int main() {
                                       PROJECT_DIR "/kernels/get_vel_fluid/tgv.cl",
                                       PROJECT_DIR "/kernels/iterate_particle.cl"};
     // ONLY WORKS FOR M2
-    cl_kernel iterate_particle = getKernel(device, context, iterate_particle_files, 4, "iterate_particle", TRUE);
+    cl_kernel iterate_particle = getKernel((cl_device_id) device, context, iterate_particle_files, 4, "iterate_particle", TRUE);
 
-
+    mu_G = 6.109e-6 + 4.604e-8 * T_R - 1.051e-11 * pow(T_R, 2);
 
     hparticles = malloc(sizeof(particle) * NUMPART);
     if (hparticles == NULL) {
         fprintf(stderr, "Particles memory allocation failed.\n");
         return 1;
     }
-
-    mu_G = 6.109e-6 + 4.604e-8 * T_R - 1.051e-11 * pow(T_R, 2);
 
     float min_scale = 0.5;
     float max_scale = 5.0;
@@ -120,8 +118,10 @@ int main() {
     }
 
     for (int i = 0; i <= num; i += 1) {
-        tau_scale = min_scale + (i * step);
-        printf("Tau scale = %f\n", tau_scale);
+        float temp_scale = min_scale + (i * step);
+        float T_G_scaled = temp_scale * T_G;
+        printf("Fluid temp scale = %f\n", temp_scale);
+        printf("Fluid temperature = %f\n", T_G_scaled);
         printf("[INIT] Creating particle positions.\n");
         particle_effect_diameter = (cl_float) (1.5 * particle_diameter);
         cl_float3 *positions = malloc(sizeof(cl_float3) * NUMPART);
@@ -134,15 +134,18 @@ int main() {
             return 1;
         }
 
+
         cl_float3 *velocities = malloc(sizeof(cl_float3) * NUMPART);
         createNormalDistVelocities(velocities, NUMPART, init_speed_mean, init_speed_std_dev);
 
-        particle_diameter = pow(1.1,0.5)/1000;
+        particle_diameter = 0.002;
+//        mu_G = 6.109e-6 + 4.604e-8 * T_G_scaled - 1.051e-11 * pow(T_G_scaled, 2);
+//        rho_G = P_atm / (R * T_G_scaled);
 
         // Initialize particles.
         initializeMonodisperseParticles(hparticles, NUMPART, density, mu_G, particle_diameter,
                                         particle_effect_diameter, C_p_G, C_L, P_atm, rho_G, R_bar, R, W_G, W_V, Y_G,
-                                        T_d, T_B, T_G, positions, velocities);
+                                        T_d, T_B, T_G_scaled, positions, velocities);
         free(positions);
 
         if (!checkPositions(hparticles, NUMPART, domain_length)) {
@@ -150,9 +153,9 @@ int main() {
             return 1;
         }
         tau = get_tau(&(hparticles[0]));
-        timestep = 0.01 * tau;
-        log_step = timestep;
-        sim_length = 10 * tau;
+        timestep = 0.00001 * tau;
+        log_step = 1000*timestep;
+        sim_length = 100 * tau;
 
         // Convert decimal scale values xx.xx to filename format xx_xx
         char s0[20];
@@ -168,15 +171,15 @@ int main() {
         sprintf(sc, "%s_%s", array[0], array[1]); // combine ones and decimals into ones_decimals
 
         // create dir string
-        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_tau_m_", sc, "/");
+        snprintf(folder, sizeof(folder), "%s%s%s", "c_heat_mass_transfer_T_G_", sc, "/");
 //        printf("%s\n", folder);
-        sprintf(dir, "%s%s", PROJECT_DIR "analysis/timescales/tau_m/data/", folder);
-        sprintf(datadir, "%s", PROJECT_DIR "analysis/timescales/tau_m/data/");
+        sprintf(dir, "%s%s", PROJECT_DIR "analysis/fluidprops/T_G/data/", folder);
+        sprintf(datadir, "%s", PROJECT_DIR "analysis/fluidprops/T_G/data/");
 
         // calculate simulation duration
         start = time(NULL);
         runSim(hparticles, NUMPART, iterate_particle, hparticles[0].diameter, periodic, domain_length,
-               prefix, dir, sim_length, timestep, VERBOSE, LOG_DATA, TRUE, log_step, device, context, coupled,
+               prefix, dir, sim_length, timestep, VERBOSE, LOG_DATA, TRUE, log_step, (cl_device_id) device, context, coupled,
                analytic, fixed_Re, model, fixed_tau, tau_scale);
         end = time(NULL);
 

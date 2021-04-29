@@ -3,6 +3,7 @@
 //
 
 #include "simUtils.h"
+#include "stdio.h"
 
 int writeParticles(particle *particles, float time, char prefix[], char dir[], cl_ulong NUMPART, boolean log_vel) {
     char filename[500];
@@ -14,11 +15,14 @@ int writeParticles(particle *particles, float time, char prefix[], char dir[], c
 
     sprintf(filename, "%s%llu_%s_%i.txt", dir, NUMPART, prefix, (long) roundf(time * 1e6));
     FILE *fd = fopen(filename, "w");
+    fprintf(fd, "Time = %f s\n", time);
+
+
     for (int i = 0; i < NUMPART; i++) {
         if (log_vel) {
-            fprintf(fd, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,\n", particles[i].pos.x, particles[i].pos.y, particles[i].pos.z,
-                    particles[i].vel.x, particles[i].vel.y, particles[i].vel.z, particles[i].fluid_vel.x,
-                    particles[i].fluid_vel.y, particles[i].fluid_vel.z, particles[i].T_d, particles[i].diameter*1000*particles[i].diameter*1000);
+            fprintf(fd, "%f,%f,%f,%f,%f,%f,%f,%f,%e,%d\n", particles[i].vel.x, particles[i].vel.y, particles[i].vel.z, particles[i].fluid_vel.x,
+                    particles[i].fluid_vel.y, particles[i].fluid_vel.z, particles[i].T_d,
+                    particles[i].diameter*1000*particles[i].diameter*1000, particles[i].m_d, i);
         } else {
             fprintf(fd, "%f,%f,%f\n", particles[i].pos.x, particles[i].pos.y, particles[i].pos.z);
         }
@@ -28,9 +32,8 @@ int writeParticles(particle *particles, float time, char prefix[], char dir[], c
 }
 
 int writeSetupData(char prefix[], char dir[], cl_ulong NUMPART, cl_float timestep, cl_float sim_length,
-                   cl_float domain_length,
-                   cl_float particle_diameter, cl_float effect_diameter, cl_float particle_density,
-                   cl_float fluid_viscosity) {
+                   cl_float domain_length, cl_float particle_diameter, cl_float particle_density,
+                   cl_float fluid_viscosity, float tau) {
     char filename[500];
 
     if (!checkDirExists(dir)) {
@@ -45,9 +48,9 @@ int writeSetupData(char prefix[], char dir[], cl_ulong NUMPART, cl_float timeste
     fprintf(fd, "Simulation length: %f\n", sim_length);
     fprintf(fd, "Domain length: %f\n", domain_length);
     fprintf(fd, "Particle diameter: %f\n", particle_diameter);
-    fprintf(fd, "Effect diameter: %f\n", effect_diameter);
     fprintf(fd, "Particle density: %f\n", particle_density);
     fprintf(fd, "Fluid viscosity: %f\n", fluid_viscosity);
+    fprintf(fd, "Tau: %f\n", tau);
     fclose(fd);
     return 1;
 }
