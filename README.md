@@ -1,4 +1,4 @@
-# HMOranges
+# M2Oranges
 M2Oranges builds off [HMOranges](https://github.com/TheOfficialDarthVader/HMOranges) by adding a the Abramzon-Sirignano droplet model (M2). The implementation is as per HMOranges, with extra variables and a changes to the kernel to include the new droplet model.
 
 ## Project Structure
@@ -7,7 +7,8 @@ The project is organised into relevant directories. The contents of each of thes
 #### analysis/
 This directory contains all types of the analysis and a Python script for post-simulation data processing.
 The Python script `Stats.py` which is used to collate and graph the data from simulations.
-The subdirectory `stokes_numbers` is inherited from HMOranges but has not been updated to use with M2 yet.
+The subdirectory `stokes_numbers` is inherited from HMOranges but has not been updated to use with M2 yet. 
+The folder `/data` must be present in each subdirectory before running the corresponding targets otherwise the code may fail to log data.
 
 #### kernels/
 This directory contains all of the OpenCL kernels for the project.
